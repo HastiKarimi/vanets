@@ -11,8 +11,13 @@ class Car:
         # self.total_processing_time = 0
         # self.tasks_processed = 0
 
+    def make_car_parked(self, time):
+        self.tqueue.last_change_queue_length = time
+        self.is_moving = False
+
     def add_task(self, task, time, overhead=0):
         task.processing_time += overhead
+        task.arrival_time = task.creation_time + overhead
         self.tqueue.add_task(task, time)
         return task
         # heapq.heappush(self.queue, (task.priority, task))
@@ -36,3 +41,6 @@ class Car:
             next_task.service_start_time = time
             return next_task.processing_time
         return None
+    
+    def end_simulation(self, time):
+        self.tqueue.end_simulation(time)

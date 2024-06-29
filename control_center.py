@@ -38,3 +38,7 @@ class ControlCenter:
             next_task.service_start_time = time
             return next_task.processing_time
         return None
+    
+    def end_simulation(self, time):
+        for tq in self.task_queues:
+            tq.end_simulation(time)

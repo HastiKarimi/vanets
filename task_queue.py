@@ -24,7 +24,10 @@ class TaskQueue:
         task.is_processed = True
         task.finish_time = time
 
-        self.queue_time += task.service_start_time - task.creation_time
+        qtime = task.service_start_time - task.arrival_time
+        if qtime < 0:
+            print("here")
+        self.queue_time += task.service_start_time - task.arrival_time
         self.busy_time += task.processing_time
         self.num_tasks_processed += 1
         return task

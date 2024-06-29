@@ -5,7 +5,6 @@ from control_center import ControlCenter
 from car import Car
 import heapq
 
-
 np.random.seed(42)
 event_queue = []
 
@@ -56,6 +55,8 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
         event = heapq.heappop(event_queue)
         current_time = event.event_time
         if current_time > T:
+            control_center.end_simulation(T)
+            parked_car.end_simulation(T)
             break
 
         print(
@@ -65,15 +66,16 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
 
         if current_time >= t and parked_car is None:
             parked_car = np.random.choice(cars)
-            parked_car.is_moving = False
+            parked_car.make_car_parked(t)
             print(
                 f"Car {parked_car.id} is in parked state at time {current_time} and is serving tasks"
             )
 
         if event.event_type == EventType.GENERATE_TASK:
             task = generate_task(current_time, lambda_1, X, event.entity)
-            # print( f"Received task with priority {task.priority} at time {current_time} and processing time {
-            # task.processing_time}" )
+            # print(
+            #     f"Received task with priority {task.priority} at time {current_time} and processing"
+            #     f" time {task.processing_time}")
 
             if parked_car and current_time >= t and np.random.rand() < P:
                 schedule_event(
@@ -84,8 +86,9 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
                 if processor_id is not None:
                     # if the task is the only task in the queue, then process it
                     if control_center.task_queues[processor_id].num_tasks() == 1:
+                        next_task_processing_time = control_center.next_task_processing_time(processor_id, current_time)
                         schedule_event(
-                            current_time + task.processing_time,
+                            current_time + next_task_processing_time,
                             EventType.PROCESSING_FINISHED,
                             control_center,
                             processor_id,
@@ -93,23 +96,23 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
 
         elif event.event_type == EventType.PROCESSING_FINISHED:
             if event.processor_id is not None:
-                control_center.process_tasks(processor_id, current_time)
+                control_center.process_tasks(event.processor_id, current_time)
                 if not control_center.task_queues[event.processor_id].is_empty():
-                    next_task_processing_time = control_center.next_task_processing_time(event.processor_id, current_time)
-                    if processing_time:
-                        schedule_event(
-                            current_time + next_task_processing_time,
-                            EventType.PROCESSING_FINISHED,
-                            control_center,
-                            event.processor_id,
-                        )
+                    next_task_processing_time = control_center.next_task_processing_time(event.processor_id,
+                                                                                         current_time)
+                    schedule_event(
+                        current_time + next_task_processing_time,
+                        EventType.PROCESSING_FINISHED,
+                        control_center,
+                        event.processor_id,
+                    )
             else:
                 parked_car.process_task(current_time)
                 if parked_car and not parked_car.tqueue.is_empty():
-                    processing_time = parked_car.next_task_processing_time(current_time)
-                    if processing_time:
+                    next_task_processing_time = parked_car.next_task_processing_time(current_time)
+                    if next_task_processing_time:
                         schedule_event(
-                            current_time + processing_time,
+                            current_time + next_task_processing_time,
                             EventType.PROCESSING_FINISHED,
                             parked_car,
                         )
@@ -118,24 +121,23 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
             # event.processor_id is task in this condition
             task = parked_car.add_task(event.processor_id, current_time, C)
             if parked_car.tqueue.num_tasks() == 1:
+                next_task_processing_time = parked_car.next_task_processing_time(current_time)
                 schedule_event(
-                    current_time + task.processing_time,
+                    current_time + next_task_processing_time,
                     EventType.PROCESSING_FINISHED,
                     parked_car,
                 )
 
-                # schedule_event(current_time, EventType.PROCESS_PARKED_CAR, parked_car)
-
-        # elif event.event_type == EventType.PROCESS_PARKED_CAR:
-        #     processing_time = parked_car.process_task(current_time)
-        #     if processing_time:
-        #         schedule_event(
-        #             current_time + processing_time,
-        #             EventType.PROCESSING_FINISHED,
-        #             parked_car,
-        #         )
-
     print("Simulation Completed!")
+
+    metrics = []
+    for tq in control_center.task_queues:
+        metrics.append(tq.get_metrics())
+
+    if parked_car is not None:
+        metrics.append(parked_car.tqueue.get_metrics())
+
+    print(metrics)
     # TODO: Print statistics (average lens, CDF, ...)
 
 
@@ -145,8 +147,8 @@ if __name__ == "__main__":
     X = 0.5
     C = 0.75
     t = 3
-    T = 10
+    T = 18
     N = 3
-    P = 0.5
+    P = 0.25
     strategy = "FIFO"
     simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy)
