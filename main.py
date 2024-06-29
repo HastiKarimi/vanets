@@ -187,12 +187,12 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
 
 
 if __name__ == "__main__":
-    lambda_1 = 0.5
-    lambda_2 = 0.5
+    lambda_1 = 1
+    lambda_2 = 1
     X = 0.5
     C = 0.75
     t = 3
-    T = 18
+    T = 70
     N = 3
     P = 0.25
     strategy = "FIFO"

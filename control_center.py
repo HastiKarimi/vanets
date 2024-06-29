@@ -18,7 +18,7 @@ class ControlCenter:
             processor_id = self.task_queues.index(min_tqueue)
             min_tqueue.add_task(task, time)
         elif strategy == "WRR":
-            processor_id = task.creation_time % self.num_processors
+            processor_id = int(task.creation_time % self.num_processors)
             self.task_queues[processor_id].add_task(task, time)
         else:
             raise NotImplementedError(f"Unknown strategy: {strategy}")
