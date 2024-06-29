@@ -10,3 +10,9 @@ class Task:
 
     def __lt__(self, others):
         return self.priority < others.priority
+    
+    def get_queue_time(self, time):
+        if self.is_processed:
+            return self.service_start_time - self.arrival_time
+        else:
+            return time - self.arrival_time

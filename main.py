@@ -4,12 +4,16 @@ from event import Event, EventType
 from control_center import ControlCenter
 from car import Car
 import heapq
+import matplotlib.pyplot as plt
+from pylab import *
 
 np.random.seed(42)
 event_queue = []
 
 PRINT_SCHEDULINGS = False
 PRINT_HEAP_STATS = False
+
+all_tasks = []
 
 
 def schedule_event(event_time, event_type, entity, processor_id=None):
@@ -35,6 +39,7 @@ def generate_task(current_time, lambda_1, X, entity=None):
     task = Task(priority, current_time, processing_time)
     interarrival_time = np.random.exponential(1 / X)
     schedule_event(current_time + interarrival_time, EventType.GENERATE_TASK, entity)
+    all_tasks.append(task)
     return task
 
 
@@ -138,7 +143,47 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
         metrics.append(parked_car.tqueue.get_metrics())
 
     print(metrics)
-    # TODO: Print statistics (average lens, CDF, ...)
+
+    print("the metrics collected:")
+    sum_queue_times = 0
+    sum_queue_lengths = 0
+    for entity_id in range(3):
+        print(f"processor {entity_id} in control center:")
+        entity = metrics[entity_id]
+        qtime = entity["queue_time"]
+        busy_time = entity["busy_time"]
+        sum_queue_times += qtime
+        sum_queue_lengths += entity["sum_queue_length"]
+        print(f"\taverage queue time in processor {entity_id} is {qtime}")
+        print(f"\taverage utilization in processor {entity_id} is {busy_time / T}")
+        print("")
+
+    print("parked car:")
+    entity = metrics[-1]
+    qtime = entity["queue_time"]
+    busy_time = entity["busy_time"]
+    sum_queue_times += qtime
+    sum_queue_lengths += entity["sum_queue_length"]
+    print(f"\taverage queue time in parked car is {qtime}")
+    print(f"\taverage utilization in parked car is {busy_time / (T - t)}")
+    print("")
+
+    print(f"average queue time is {sum_queue_times / (T * 3 + (T - t))}")
+    print(f"average queue length is {sum_queue_lengths / (T * 3 + (T - t))}")
+
+    list_queue_time = []
+    for task in all_tasks:
+        list_queue_time.append(task.get_queue_time(T))
+
+    # draw cdf of queue time
+    list_queue_time.sort()
+
+    count, bins_count = np.histogram(list_queue_time, bins=10)
+    pdf = count / sum(count)
+    cdf = np.cumsum(pdf)
+    plt.plot(bins_count[1:], cdf, label="CDF")
+    plt.legend()
+    plt.show()
 
 
 if __name__ == "__main__":
