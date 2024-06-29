@@ -84,49 +84,29 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
                 if processor_id is not None:
                     # if the task is the only task in the queue, then process it
                     if control_center.task_queues[processor_id].num_tasks() == 1:
-                        processing_time = control_center.process_tasks(processor_id, current_time)
-                        if processing_time:
-                            schedule_event(
-                                current_time + processing_time,
-                                EventType.PROCESSING_FINISHED,
-                                control_center,
-                                processor_id,
-                            )
-        #             schedule_event(
-        #                 current_time,
-        #                 EventType.PROCESS_CONTROL_CENTER,
-        #                 control_center,
-        #                 processor_id,
-        #             )
-
-        # elif event.event_type == EventType.PROCESS_CONTROL_CENTER:
-        #     processing_time = control_center.process_tasks(event.processor_id, current_time)
-        #     if processing_time:
-        #         schedule_event(
-        #             current_time + processing_time,
-        #             EventType.PROCESSING_FINISHED,
-        #             control_center,
-        #             event.processor_id,
-        #         )
+                        schedule_event(
+                            current_time + task.processing_time,
+                            EventType.PROCESSING_FINISHED,
+                            control_center,
+                            processor_id,
+                        )
 
         elif event.event_type == EventType.PROCESSING_FINISHED:
             if event.processor_id is not None:
+                control_center.process_tasks(processor_id, current_time)
                 if not control_center.task_queues[event.processor_id].is_empty():
-                    processing_time = control_center.process_tasks(event.processor_id, current_time)
+                    next_task_processing_time = control_center.next_task_processing_time(event.processor_id, current_time)
                     if processing_time:
                         schedule_event(
-                            current_time + processing_time,
+                            current_time + next_task_processing_time,
                             EventType.PROCESSING_FINISHED,
                             control_center,
                             event.processor_id,
                         )
-                else:
-                    print(
-                        f"error: Processor {event.processor_id} has no tasks to process at time {current_time}"
-                    )
             else:
-                if parked_car and parked_car.queue:
-                    processing_time = parked_car.process_task(current_time)
+                parked_car.process_task(current_time)
+                if parked_car and not parked_car.tqueue.is_empty():
+                    processing_time = parked_car.next_task_processing_time(current_time)
                     if processing_time:
                         schedule_event(
                             current_time + processing_time,
@@ -135,18 +115,25 @@ def simulate(lambda_1, lambda_2, X, C, t, T, N, P, strategy):
                         )
 
         elif event.event_type == EventType.MOVE_TO_PARKED_CAR:
-            parked_car.add_task(event.processor_id, current_time, C)
-            if parked_car.queue:
-                schedule_event(current_time, EventType.PROCESS_PARKED_CAR, parked_car)
-
-        elif event.event_type == EventType.PROCESS_PARKED_CAR:
-            processing_time = parked_car.process_task(current_time)
-            if processing_time:
+            # event.processor_id is task in this condition
+            task = parked_car.add_task(event.processor_id, current_time, C)
+            if parked_car.tqueue.num_tasks() == 1:
                 schedule_event(
-                    current_time + processing_time,
+                    current_time + task.processing_time,
                     EventType.PROCESSING_FINISHED,
                     parked_car,
                 )
+
+                # schedule_event(current_time, EventType.PROCESS_PARKED_CAR, parked_car)
+
+        # elif event.event_type == EventType.PROCESS_PARKED_CAR:
+        #     processing_time = parked_car.process_task(current_time)
+        #     if processing_time:
+        #         schedule_event(
+        #             current_time + processing_time,
+        #             EventType.PROCESSING_FINISHED,
+        #             parked_car,
+        #         )
 
     print("Simulation Completed!")
     # TODO: Print statistics (average lens, CDF, ...)

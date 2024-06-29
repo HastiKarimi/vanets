@@ -29,5 +29,12 @@ class ControlCenter:
         if not self.task_queues[processor_id].is_empty():
             tq = self.task_queues[processor_id]
             task = tq.process_next_task(time)
-            return task.processing_time
+            return task
+        return None
+    
+    def next_task_processing_time(self, processor_id, time):
+        if not self.task_queues[processor_id].is_empty():
+            next_task = self.task_queues[processor_id].tasks[0]
+            next_task.service_start_time = time
+            return next_task.processing_time
         return None
